@@ -1,0 +1,95 @@
+# Semantic layer for the Demo Retail Co. database.
+#
+# The model only sees what is described here: approved views, plain-English
+# column meanings, business rules, and a few worked examples. Changing this
+# file is how a non-developer teaches the assistant the business.
+
+database:
+  name: Demo Retail Co.
+  dialect: sqlite
+  description: >
+    A synthetic online retailer in Pakistan selling electronics, home goods,
+    groceries and fashion across five regions. Orders run from Jan 2024 to
+    Dec 2025. Amounts are in Pakistani rupees (PKR).
+
+views:
+  vw_order_lines:
+    description: One row per product line on an order, with customer, region and product details.
+    columns:
+      order_id: Order number
+      order_date: Order date as text, YYYY-MM-DD
+      order_month: Order month as text, YYYY-MM
+      order_year: Order year as an integer
+      channel: "Sales channel: Website, Mobile App or Marketplace"
+      status: "Order status: Delivered, Cancelled, Returned or Pending"
+      customer_id: Customer number
+      customer_name: Customer full name
+      segment: "Customer segment: Consumer, Small Business or Corporate"
+      region_name: "Customer region: North, South, Central, West or East"
+      product_id: Product number
+      product_name: Product name
+      category: "Product category: Electronics, Home, Grocery or Fashion"
+      quantity: Units on this line
+      unit_price: Price per unit before discount, PKR
+      discount_pct: Discount on this line, in percent (0-100)
+      net_revenue: Line revenue after discount, PKR
+      gross_profit: Net revenue minus product cost, PKR
+
+  vw_sales_by_month_region:
+    description: Delivered sales summarised by month and region. Use this for trends and regional totals.
+    columns:
+      order_month: Month as text, YYYY-MM
+      order_year: Year as an integer
+      region_name: Region
+      orders: Number of delivered orders
+      units: Units sold
+      net_revenue: Net revenue, PKR
+      gross_profit: Gross profit, PKR
+
+  vw_customer_summary:
+    description: One row per customer with lifetime delivered orders and revenue.
+    columns:
+      customer_id: Customer number
+      customer_name: Customer full name
+      segment: Customer segment
+      region_name: Customer region
+      signup_date: Date the customer signed up, YYYY-MM-DD
+      delivered_orders: Number of delivered orders
+      lifetime_revenue: Total delivered net revenue, PKR
+      last_order_date: Date of the most recent delivered order (NULL if none)
+
+rules:
+  - Revenue and sales always mean net revenue (after discount) from delivered orders only, unless the user asks about another status.
+  - In vw_order_lines, filter status = 'Delivered' for any revenue, profit, units or sales question.
+  - vw_sales_by_month_region and vw_customer_summary already include delivered orders only.
+  - Gross margin percent = SUM(gross_profit) / SUM(net_revenue) * 100.
+  - Average order value = SUM(net_revenue) / COUNT(DISTINCT order_id), delivered orders only.
+  - Cancellation rate = cancelled orders / all orders * 100, counted with COUNT(DISTINCT order_id).
+  - '"This year" means 2025 and "last year" means 2024 in this dataset.'
+  - Round money to 2 decimals and percentages to 1 decimal.
+  - Always give result columns readable names with AS.
+
+examples:
+  - question: What was net revenue by region in 2025?
+    sql: |
+      SELECT region_name, ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_sales_by_month_region
+      WHERE order_year = 2025
+      GROUP BY region_name
+      ORDER BY net_revenue DESC
+  - question: Which 5 products sold the most units last year?
+    sql: |
+      SELECT product_name, SUM(quantity) AS units
+      FROM vw_order_lines
+      WHERE status = 'Delivered' AND order_year = 2024
+      GROUP BY product_name
+      ORDER BY units DESC
+      LIMIT 5
+  - question: What is the cancellation rate by channel?
+    sql: |
+      SELECT channel,
+             ROUND(100.0 * COUNT(DISTINCT CASE WHEN status = 'Cancelled' THEN order_id END)
+                   / COUNT(DISTINCT order_id), 1) AS cancellation_rate_pct
+      FROM vw_order_lines
+      GROUP BY channel
+      ORDER BY cancellation_rate_pct DESC

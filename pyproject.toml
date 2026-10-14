@@ -1,0 +1,18 @@
+[project]
+name = "text-to-sql-starter"
+version = "0.1.0"
+description = "Ask a database questions in plain English: semantic layer, SQL safety validator, read-only execution and an evaluation harness."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Muhammad Akhtar Quddus" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
