@@ -1,0 +1,157 @@
+# Evaluation set: business questions with a reference ("gold") SQL query.
+# A model answer counts as correct when its result matches the reference
+# result (row order and column names are ignored; numbers compared to 2 dp).
+#
+# None of these questions appear in the semantic layer's worked examples.
+
+questions:
+  - id: q01
+    topic: totals
+    question: How many delivered orders were there in 2025?
+    sql: |
+      SELECT COUNT(DISTINCT order_id) AS delivered_orders
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2025
+
+  - id: q02
+    topic: totals
+    question: What was total net revenue last year?
+    sql: |
+      SELECT ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_sales_by_month_region WHERE order_year = 2024
+
+  - id: q03
+    topic: trend
+    question: Show monthly net revenue for 2025.
+    sql: |
+      SELECT order_month, ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_sales_by_month_region WHERE order_year = 2025
+      GROUP BY order_month ORDER BY order_month
+
+  - id: q04
+    topic: ranking
+    question: Which region had the lowest net revenue in 2024?
+    sql: |
+      SELECT region_name, ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_sales_by_month_region WHERE order_year = 2024
+      GROUP BY region_name ORDER BY net_revenue ASC LIMIT 1
+
+  - id: q05
+    topic: breakdown
+    question: What is net revenue by product category this year?
+    sql: |
+      SELECT category, ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2025
+      GROUP BY category ORDER BY net_revenue DESC
+
+  - id: q06
+    topic: profit
+    question: What is the gross margin percent by category for all time?
+    sql: |
+      SELECT category, ROUND(100.0 * SUM(gross_profit) / SUM(net_revenue), 1) AS gross_margin_pct
+      FROM vw_order_lines WHERE status = 'Delivered'
+      GROUP BY category ORDER BY gross_margin_pct DESC
+
+  - id: q07
+    topic: ranking
+    question: Top 10 customers by lifetime revenue.
+    sql: |
+      SELECT customer_name, lifetime_revenue
+      FROM vw_customer_summary ORDER BY lifetime_revenue DESC LIMIT 10
+
+  - id: q08
+    topic: customers
+    question: How many customers are in each segment?
+    sql: |
+      SELECT segment, COUNT(*) AS customers
+      FROM vw_customer_summary GROUP BY segment ORDER BY customers DESC
+
+  - id: q09
+    topic: customers
+    question: How many customers have never had a delivered order?
+    sql: |
+      SELECT COUNT(*) AS customers
+      FROM vw_customer_summary WHERE delivered_orders = 0
+
+  - id: q10
+    topic: kpi
+    question: What was the average order value in 2025?
+    sql: |
+      SELECT ROUND(SUM(net_revenue) / COUNT(DISTINCT order_id), 2) AS avg_order_value
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2025
+
+  - id: q11
+    topic: kpi
+    question: What is the return rate by region? Count returned orders as a percent of all orders.
+    sql: |
+      SELECT region_name,
+             ROUND(100.0 * COUNT(DISTINCT CASE WHEN status = 'Returned' THEN order_id END)
+                   / COUNT(DISTINCT order_id), 1) AS return_rate_pct
+      FROM vw_order_lines GROUP BY region_name ORDER BY return_rate_pct DESC
+
+  - id: q12
+    topic: breakdown
+    question: How many delivered orders came from each sales channel in 2024?
+    sql: |
+      SELECT channel, COUNT(DISTINCT order_id) AS delivered_orders
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2024
+      GROUP BY channel ORDER BY delivered_orders DESC
+
+  - id: q13
+    topic: ranking
+    question: Which product had the highest gross profit in 2025?
+    sql: |
+      SELECT product_name, ROUND(SUM(gross_profit), 2) AS gross_profit
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2025
+      GROUP BY product_name ORDER BY gross_profit DESC LIMIT 1
+
+  - id: q14
+    topic: trend
+    question: Compare total net revenue in 2024 and 2025.
+    sql: |
+      SELECT order_year, ROUND(SUM(net_revenue), 2) AS net_revenue
+      FROM vw_sales_by_month_region GROUP BY order_year ORDER BY order_year
+
+  - id: q15
+    topic: breakdown
+    question: How many units of Electronics were sold in each region in 2025?
+    sql: |
+      SELECT region_name, SUM(quantity) AS units
+      FROM vw_order_lines
+      WHERE status = 'Delivered' AND order_year = 2025 AND category = 'Electronics'
+      GROUP BY region_name ORDER BY units DESC
+
+  - id: q16
+    topic: kpi
+    question: What share of 2025 net revenue came from the Mobile App channel, as a percent?
+    sql: |
+      SELECT ROUND(100.0 * SUM(CASE WHEN channel = 'Mobile App' THEN net_revenue ELSE 0 END)
+                   / SUM(net_revenue), 1) AS mobile_app_share_pct
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2025
+
+  - id: q17
+    topic: trend
+    question: Which month of 2025 had the most delivered orders?
+    sql: |
+      SELECT order_month, SUM(orders) AS delivered_orders
+      FROM vw_sales_by_month_region WHERE order_year = 2025
+      GROUP BY order_month ORDER BY delivered_orders DESC LIMIT 1
+
+  - id: q18
+    topic: customers
+    question: Average lifetime revenue per customer by segment.
+    sql: |
+      SELECT segment, ROUND(AVG(lifetime_revenue), 2) AS avg_lifetime_revenue
+      FROM vw_customer_summary GROUP BY segment ORDER BY avg_lifetime_revenue DESC
+
+  - id: q19
+    topic: kpi
+    question: What was the average discount percent on delivered order lines in 2024?
+    sql: |
+      SELECT ROUND(AVG(discount_pct), 1) AS avg_discount_pct
+      FROM vw_order_lines WHERE status = 'Delivered' AND order_year = 2024
+
+  - id: q20
+    topic: guardrail
+    question: What is the stock level of each product in the warehouse?
+    sql: |
+      SELECT 'Not answerable from the available data' AS message
